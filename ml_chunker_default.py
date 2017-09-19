@@ -31,7 +31,7 @@ def extract_features(sentences, w_size, feature_names):
     return X_l, y_l
 
 
-def extract_features_sent(sentence, w_size, feature_names):
+def extract_features_sent(sentence, w_size, feature_names, BOS=False):
     """
     Extract the features from one sentence
     returns X and y, where X is a list of dictionaries and
@@ -73,8 +73,13 @@ def extract_features_sent(sentence, w_size, feature_names):
             x.append(padded_sentence[i + j][1])
         # The chunks (Up to the word)
         
-        for j in range(w_size):
-            x.append(padded_sentence[i + j][2])
+        if BOS == True:
+            for j in range(w_size):
+                x.append('BOS')
+        else:
+            for j in range(w_size):
+                x.append(padded_sentence[i + j][2])
+
         
         # We represent the feature vector as a dictionary
         X.append(dict(zip(feature_names, x)))
@@ -125,11 +130,27 @@ def encode_classes(y_symbols):
 
 def predict(test_sentences, feature_names, f_out):
     for test_sentence in test_sentences:
-        X_test_dict, y_test_symbols = extract_features_sent(test_sentence, w_size, feature_names)
-        # Vectorize the test sentence and one hot encoding
-        X_test = vec.transform(X_test_dict)
-        # Predicts the chunks and returns numbers
-        y_test_predicted = classifier.predict(X_test)
+        X_test_dict, y_test_symbols = extract_features_sent(test_sentence, w_size, feature_names, True)
+
+        '''
+        Our smart implementation
+        '''
+        y_test_predicted = ['BOS', 'BOS']
+        for word in X_test_dict:
+            word['chunk_n1'] = y_test_predicted[-1]
+            word['chunk_n2'] = y_test_predicted[-2]
+            X_test = vec.transform([word])
+            y_test_predicted.append(classifier.predict(X_test)[0])
+
+        y_test_predicted = y_test_predicted[2:]
+
+
+        # # Vectorize the test sentence and one hot encoding
+        # X_test = vec.transform(X_test_dict)
+        # # Predicts the chunks and returns numbers
+        # y_test_predicted = classifier.predict(X_test)
+
+
         # Converts to chunk names
         y_test_predicted_symbols = list(dict_classes[i] for i in y_test_predicted)
         # Appends the predicted chunks as a last column and saves the rows
